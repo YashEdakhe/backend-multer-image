@@ -6,130 +6,160 @@ const path = require('path');
 const multer = require('multer');
 // const GridFsStorage = require('multer-gridfs-storage')
 // const Grid = require('gridfs-stream')
-const { urlencoded } = require('body-parser');
-
-
 
 const app = express();
-app.use(bodyParser.urlencoded({extended:true}));
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
 
 var storage = multer.diskStorage({
-    destination:  (req, file, cb) =>{
-      cb(null, 'uploads')
+    destination: (req, file, cb) => {
+        cb(null, 'uploads')
     },
-    filename: (req, file, cb) =>{
-      cb(null, file.fieldname + '-' + Date.now()+path.extname(file.originalname))
+    filename: (req, file, cb) => {
+        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
     }
-  })
+})
 
 const upload = multer({
-    storage:storage
+    storage: storage
 })
 
 //////////////////////////////////////////////////////////// Database Connection  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-mongoose.connect("mongodb://localhost:27017/employeeDB",{ useNewUrlParser: true ,useUnifiedTopology: true},(err,result)=>{
-    if(result){
+mongoose.connect("mongodb://localhost:27017/employeeDB", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}, (err, result) => {
+    if (result) {
         console.log("DB connection Successful at 27017")
-    }else{
+    } else {
         console.log("Database error")
     }
 });
 
 const employeeSchema = mongoose.Schema({
-    id : Number,
+    id: Number,
     firstName: String,
-    lastName : String,
-    email : String,
-    mobile : Number,
-    designation : String,
-    address : {
-        street_number:Number, 
-        street_name:String,
-        city_name:String,
-        country_name:String,
+    lastName: String,
+    email: String,
+    mobile: Number,
+    designation: String,
+    address: {
+        street_number: Number,
+        street_name: String,
+        city_name: String,
+        country_name: String,
     },
+})
+
+const imageSchema = mongoose.Schema({
+    id : Number,
     img: {
         data: Buffer,
         contentType: String
     }
 })
 
-const Employee = mongoose.model("Employee",employeeSchema);
-
+const Employee = mongoose.model("Employee", employeeSchema);
+const Image = mongoose.model("Image",imageSchema);
 //////////////////////////////////////////////////////////// Getting All Data  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 app.route('/employee')
-    .get((req,res)=>{
-        Employee.find((err,result)=>{
-            if(result){
+    .get((req, res) => {
+        Employee.find((err, result) => {
+            if (result) {
                 res.send(result)
-            }else{
+            } else {
                 console.log(err);
             }
         });
     })
-    .delete((req,res)=>{
-        Employee.deleteMany((err)=>{
-            if(!err){
+    .delete((req, res) => {
+        Employee.deleteMany((err) => {
+            if (!err) {
                 res.send("All Articles are Deleted Succfully")
-            }else{
+            } else {
                 console.log(err)
             }
         })
     })
-    // .post((req,res)=>{
-    //     const newEmployee = new Employee({
-    //         id : req.body.id,
-    //         firstName : req.body.firstName,
-    //         lastName : req.body.lastName,
-    //         designation: req.body.designation,
-    //         email : req.body.email,
-    //         mobile: req.body.mobile,
-    //         address:{
-    //             street_number: req.body.address.street_number,
-    //             street_name  : req.body.address.street_name,
-    //             city_name    : req.body.address.city_name,
-    //             country_name : req.body.address.country_name,
-    //         },
-    //         img:{
-    //              data: req.body.img.Buffer,
-    //              contentType: req.body.img.contentType  
-    //         },
-    //     });
-        
-    //     newEmployee.save();
-    // })
+    .post((req, res) => {
+        const newEmployee = new Employee({
+            id: req.body.id,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            designation: req.body.designation,
+            email: req.body.email,
+            mobile: req.body.mobile,
+            // img:{
+            //      data: req.body.Buffer,
+            //      contentType: req.body.contentType  
+            // },
+        });
+
+        newEmployee.save();
+    })
 
 //////////////////////////////////////////////////////////// Getting Specific Data  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 app.route('/employee/:id')
-    .get((req,res)=>{
-        Employee.findOne({id:req.params.id},(err,foundEmployee)=>{
-            if(foundEmployee){
+    .get((req, res) => {
+        Employee.findOne({
+            id: req.params.id
+        }, (err, foundEmployee) => {
+            if (foundEmployee) {
                 res.send(foundEmployee)
-            }else{
+            } else {
                 console.log(err)
             }
         });
     })
 
-    .delete((req,res)=>{
-        Employee.deleteOne({id:req.params.id},(err)=>{
-            if(!err){
+    .delete((req, res) => {
+        Employee.deleteOne({
+            id: req.params.id
+        }, (err) => {
+            if (!err) {
                 res.send("Employee Data Deleted Successfully!")
-            }else{
+            } else {
                 console.log(err)
             }
         })
     })
+
+app.route('/image/:id')
+.get((req, res) => {
+    Image.findOne({
+        id: req.params.id
+    }, (err, foundImage) => {
+        if (foundImage) {
+            console.log(foundImage)
+            res.send(foundImage)
+        } else {
+            console.log(err)
+        }
+    });
+})  
 //////////////////////////////////////////////////////////// Image Upload  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-app.post('/upload',upload.single('myImage'),(req,res)=>{
-    const newItem = new Employee();
-    newItem.img.data = fs.readFileSync(req.file.path)
-    newItem.img.contentType =  `image/png`;
-    newItem.save();
-   });
+app.post('/imageUpload', upload.single('myImage'), (req, res) => {
+    const newImage = new Image({
+        id : req.body.id,
+    });
+    newImage.img.data = fs.readFileSync(req.file.path)
+    newImage.img.contentType = `image/png`;
+    newImage.save();
+});
 
 //////////////////////////////////////////////////////////// Connection Check  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-app.listen(3000,function (req,res){
+app.listen(3000, function (req, res) {
     console.log(`Server Connection Successful on port 3000`);
 })
+
+
+
+
+
+
+
+
+
+
